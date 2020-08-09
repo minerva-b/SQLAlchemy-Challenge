@@ -1,3 +1,4 @@
+# Import dependencies
 import numpy as np
 
 import sqlalchemy
@@ -96,13 +97,70 @@ def tobs():
 
     """Return a list of temperature observations (TOBS) for the last year of data"""
     # Query the dates and temperature observations (tobs) of the most active station for the last year of data
-    results = session.query(Measurement.tobs).all()
+    results = session.query(Measurement.date, Measurement.tobs).filter(Measurement.station == 'USC00519281').filter(Measurement.date >= dt.date(2016, 8, 23)).all()
 
     # Close each session to avoid running errors
     session.close()
 
-    """Return a JSON list of temperature observations (TOBS) for previous year"""
-    #
+    return jsonify(results)
 
+
+@app.route("/api/v1.0/<start>")
+def start():
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    """Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start"""
+    # Query the dates and tobs for given start date
+    results = session.query(Measurement.date >= start).filter(Measurement.tobs).all()
+
+    # Create a list to store date and temperature info
+    temp_by_start_date = []
+    for result in results:
+        temp_by_start_date.append(result[1])
+
+    # Calculate TMIN, TAVG, and TMAX for all dates greater than and equal to the start date
+    TMIN = min(temp_by_start_date)
+    TAVG = (sum(temp_by_start_date) / len(temp_by_start_date))
+    TMAX = max(temp_by_start_date)
+
+    # Close each session to avoid running errors
+    session.close()
+
+    return jsonify(
+        f"Maximum Temperature: {TMAX}<br/>"
+        f"Minimum Temperature: {TMIN}<br/>"
+        f"Average Temperature: {round(TAVG, 2)}"
+    )
+
+@app.route("/api/v1.0/<start>/<end>")
+def start_end():
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    """Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start-end range"""
+    # Query the dates and tobs for given start and end dates
+    results = session.query(Measurement.date >= start).filter(Measurement.date <= end).filter(Measurement.tobs).all()
+
+    # Create a list to store dates and temperature info
+    temp_by_start_end_dates = []
+    for result in results:
+        temp_by_start_end_dates.append(result[2])
+
+    # Calculate the TMIN, TAVG, and TMAX for dates between the start and end dates inclusive
+    TMIN = min(temp_by_start_end_dates)
+    TAVG = (sum(temp_by_start_date) / len(temp_by_start_end_dates))
+    TMAX = max(temp_by_start_end_dates)
+
+    # Close each session to avoid running errors
+    session.close()
+
+    return jsonify(
+        f"Maximum Temperature: {TMAX}<br/>"
+        f"Minimum Temperature: {TMIN}<br/>"
+        f"Average Temperature: {round(TAVG, 2)}"
+    )
+
+# Need to run app.py
 if __name__ == '__main__':
     app.run(debug=True)
