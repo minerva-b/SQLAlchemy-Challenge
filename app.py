@@ -5,6 +5,7 @@ import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
+import datetime as dt
 
 from flask import Flask, jsonify
 
@@ -12,7 +13,7 @@ from flask import Flask, jsonify
 #################################################
 # Database Setup
 #################################################
-engine = create_engine("sqlite:///hawaii.sqlite")
+engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 
 # reflect an existing database into a new model
 Base = automap_base()
@@ -37,8 +38,8 @@ app = Flask(__name__)
 def welcome():
     """List all available api routes."""
     return (
-        f"<head>Welcome to the Climate API</head>"
-        f"<b>Available Routes:<br/>"
+        f"<b>Welcome to the Climate API</b></br>"
+        f"Available Routes:</b></br>"
         f"<li>List of Precipitation: /api/v1.0/precipitation<br/>"
         f"<li>List of Stations: /api/v1.0/stations<br/>"
         f"<li>List of Temperature Observation Data (TOBS): /api/v1.0/tobs<br/>"
@@ -56,18 +57,19 @@ def precipitation():
     # Query all dates and precipitation
     results = session.query(Measurement.date, Measurement.prcp).all()
 
-    # Close each session to avoid running errors
-    session.close()
-
     """Return a JSON dict of all dates and precipitation"""
     # Convert the query results to a dictionary using 'date' as the key and 'prcp' as the value
     # Create a dictionary from the row data and append to a list of date_prcp_list
     date_prcp_list = []
+
     for date, prcp in results:
         date_prcp_dict = {}
         date_prcp_dict['date'] = date
         date_prcp_dict['prcp'] = precipitation
         date_prcp_list.append(date_prcp_dict)
+
+    # Close each session to avoid running errors
+    session.close()
 
     return jsonify(date_prcp_dict)
 
@@ -81,11 +83,11 @@ def stations():
     # Query all stations
     results = session.query(Station.name).all()
 
-    # Close each session to avoid running errors
-    session.close()
-
     # Convert list of tuples into normal list
     station_names = list(np.ravel(results))
+
+    # Close each session to avoid running errors
+    session.close()
 
     return jsonify(station_names)
 
