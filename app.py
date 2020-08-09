@@ -1,0 +1,108 @@
+import numpy as np
+
+import sqlalchemy
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, func
+
+from flask import Flask, jsonify
+
+
+#################################################
+# Database Setup
+#################################################
+engine = create_engine("sqlite:///hawaii.sqlite")
+
+# reflect an existing database into a new model
+Base = automap_base()
+# reflect the tables
+Base.prepare(engine, reflect=True)
+
+# Save reference to the table
+Measurement = Base.classes.measurement
+Station = Base.classes.station
+
+#################################################
+# Flask Setup
+#################################################
+app = Flask(__name__)
+
+
+#################################################
+# Flask Routes
+#################################################
+
+@app.route("/")
+def welcome():
+    """List all available api routes."""
+    return (
+        f"<head>Welcome to the Climate API</head>"
+        f"<b>Available Routes:<br/>"
+        f"<li>List of Precipitation: /api/v1.0/precipitation<br/>"
+        f"<li>List of Stations: /api/v1.0/stations<br/>"
+        f"<li>List of Temperature Observation Data (TOBS): /api/v1.0/tobs<br/>"
+        f"<li>Search for data by entering start date (format 'yyyy-mm-dd'): /api/v1.0/<start><br/>"
+        f"<li>Search for data by entering start and end date (format 'yyyy-mm-dd'): /api/v1.0/yyyy-mm-dd<start>/yyyy-mm-dd<end>"
+    )
+
+
+@app.route("/api/v1.0/precipitation")
+def precipitation():
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    """Return a list of all dates and precipitation"""
+    # Query all dates and precipitation
+    results = session.query(Measurement.date, Measurement.prcp).all()
+
+    # Close each session to avoid running errors
+    session.close()
+
+    """Return a JSON dict of all dates and precipitation"""
+    # Convert the query results to a dictionary using 'date' as the key and 'prcp' as the value
+    # Create a dictionary from the row data and append to a list of date_prcp_list
+    date_prcp_list = []
+    for date, prcp in results:
+        date_prcp_dict = {}
+        date_prcp_dict['date'] = date
+        date_prcp_dict['prcp'] = precipitation
+        date_prcp_list.append(date_prcp_dict)
+
+    return jsonify(date_prcp_dict)
+
+
+@app.route("/api/v1.0/stations")
+def stations():
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    """Return a JSON list of stations from dataset"""
+    # Query all stations
+    results = session.query(Station.name).all()
+
+    # Close each session to avoid running errors
+    session.close()
+
+    # Convert list of tuples into normal list
+    station_names = list(np.ravel(results))
+
+    return jsonify(station_names)
+
+
+@app.route("/api/v1.0/tobs")
+def tobs():
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    """Return a list of temperature observations (TOBS) for the last year of data"""
+    # Query the dates and temperature observations (tobs) of the most active station for the last year of data
+    results = session.query(Measurement.tobs).all()
+
+    # Close each session to avoid running errors
+    session.close()
+
+    """Return a JSON list of temperature observations (TOBS) for previous year"""
+    #
+
+if __name__ == '__main__':
+    app.run(debug=True)
