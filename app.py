@@ -38,13 +38,15 @@ app = Flask(__name__)
 def welcome():
     """List all available api routes."""
     return (
-        f"<b>Welcome to the Climate API</b></br>"
-        f"Available Routes:</b></br>"
-        f"<li>List of Precipitation: /api/v1.0/precipitation<br/>"
-        f"<li>List of Stations: /api/v1.0/stations<br/>"
-        f"<li>List of Temperature Observation Data (TOBS): /api/v1.0/tobs<br/>"
-        f"<li>Search for data by entering start date (format 'yyyy-mm-dd'): /api/v1.0/<start><br/>"
-        f"<li>Search for data by entering start and end date (format 'yyyy-mm-dd'): /api/v1.0/yyyy-mm-dd<start>/yyyy-mm-dd<end>"
+        f"<b> Welcome to the Climate API homepage </b></br>"
+        f" </br>"
+        f"All Available Routes:</b></br>"
+        f" </br>"
+        f"<li>Precipitation: /api/v1.0/precipitation</br>"
+        f"<li>List of Stations: /api/v1.0/stations</br>"
+        f"<li>List of Temperature Observation Data (TOBS): /api/v1.0/tobs</br>"
+        f"<li>Search for data by entering start date (format 'yyyy-mm-dd'): /api/v1.0/start</br>"
+        f"<li>Search for data by entering start and end date (format 'yyyy-mm-dd'): /api/v1.0/start/end</br>"
     )
 
 
@@ -65,7 +67,7 @@ def precipitation():
     for date, prcp in results:
         date_prcp_dict = {}
         date_prcp_dict['date'] = date
-        date_prcp_dict['prcp'] = precipitation
+        date_prcp_dict['prcp'] = prcp
         date_prcp_list.append(date_prcp_dict)
 
     # Close each session to avoid running errors
@@ -81,15 +83,15 @@ def stations():
 
     """Return a JSON list of stations from dataset"""
     # Query all stations
-    results = session.query(Station.name).all()
+    results = session.query(Station.name, Station.id, Station.station).all()
 
     # Convert list of tuples into normal list
-    station_names = list(np.ravel(results))
+    stations = list(np.ravel(results))
 
     # Close each session to avoid running errors
     session.close()
 
-    return jsonify(station_names)
+    return jsonify(stations)
 
 
 @app.route("/api/v1.0/tobs")
@@ -101,13 +103,16 @@ def tobs():
     # Query the dates and temperature observations (tobs) of the most active station for the last year of data
     results = session.query(Measurement.date, Measurement.tobs).filter(Measurement.station == 'USC00519281').filter(Measurement.date >= dt.date(2016, 8, 23)).all()
 
+    # Convert list of tuples into normal list
+    tobs = list(np.ravel(results))
+
     # Close each session to avoid running errors
     session.close()
 
-    return jsonify(results)
+    return jsonify(tobs)
 
 
-@app.route("/api/v1.0/<start>")
+@app.route("/api/v1.0/start")
 def start():
     # Create our session (link) from Python to the DB
     session = Session(engine)
@@ -130,12 +135,12 @@ def start():
     session.close()
 
     return jsonify(
-        f"Maximum Temperature: {TMAX}<br/>"
-        f"Minimum Temperature: {TMIN}<br/>"
+        f"Maximum Temperature: {TMAX}</br>"
+        f"Minimum Temperature: {TMIN}</br>"
         f"Average Temperature: {round(TAVG, 2)}"
     )
 
-@app.route("/api/v1.0/<start>/<end>")
+@app.route("/api/v1.0/start/end")
 def start_end():
     # Create our session (link) from Python to the DB
     session = Session(engine)
@@ -158,8 +163,8 @@ def start_end():
     session.close()
 
     return jsonify(
-        f"Maximum Temperature: {TMAX}<br/>"
-        f"Minimum Temperature: {TMIN}<br/>"
+        f"Maximum Temperature: {TMAX}</br>"
+        f"Minimum Temperature: {TMIN}</br>"
         f"Average Temperature: {round(TAVG, 2)}"
     )
 
