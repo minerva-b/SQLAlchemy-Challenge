@@ -7,13 +7,17 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 import datetime as dt
 
+# Ignoring SQLITE warnings:
+import warnings
+warnings.filterwarnings('ignore')
+
 from flask import Flask, jsonify
 
 
 #################################################
 # Database Setup
 #################################################
-engine = create_engine("sqlite:///Resources/hawaii.sqlite")
+engine = create_engine("sqlite:///Resources/hawaii.sqlite", echo=False)
 
 # reflect an existing database into a new model
 Base = automap_base()
@@ -45,8 +49,8 @@ def welcome():
         f"<li>Precipitation: /api/v1.0/precipitation</br>"
         f"<li>List of Stations: /api/v1.0/stations</br>"
         f"<li>List of Temperature Observation Data (TOBS): /api/v1.0/tobs</br>"
-        f"<li>Search for data by entering start date (format 'yyyy-mm-dd'): /api/v1.0/start</br>"
-        f"<li>Search for data by entering start and end date (format 'yyyy-mm-dd'): /api/v1.0/start/end</br>"
+        f"<li>Search for data on a specific date, enter the date in this format (yyyy-mm-dd): /api/v1.0/<start></br>"
+        f"<li>Search for data on a specific dates, enter the start and end date in this format (yyyy-mm-dd): /api/v1.0/<start>/<end></br>"
     )
 
 
@@ -112,8 +116,8 @@ def tobs():
     return jsonify(tobs)
 
 
-@app.route("/api/v1.0/start")
-def start():
+@app.route("/api/v1.0/<start>")
+def start(start):
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
@@ -121,27 +125,25 @@ def start():
     # Query the dates and tobs for given start date
     results = session.query(Measurement.date >= start).filter(Measurement.tobs).all()
 
-    # Create a list to store date and temperature info
-    temp_by_start_date = []
-    for result in results:
-        temp_by_start_date.append(result[1])
-
     # Calculate TMIN, TAVG, and TMAX for all dates greater than and equal to the start date
-    TMIN = min(temp_by_start_date)
-    TAVG = (sum(temp_by_start_date) / len(temp_by_start_date))
-    TMAX = max(temp_by_start_date)
+    start = dt.datetime.strptime(start, '%Y-%m-%d').strftime("%Y-%m-%d")
+    TMAX = session.query(func.min(Measurement.tobs)).filter(Measurement.date >= start).all()[0][0]
+    TMIN = session.query(func.max(Measurement.tobs)).filter(Measurement.date >= start).all()[0][0]
+    TAVG = session.query(func.avg(Measurement.tobs)).filter(Measurement.date >= start).all()[0][0]
 
     # Close each session to avoid running errors
     session.close()
 
-    return jsonify(
-        f"Maximum Temperature: {TMAX}</br>"
-        f"Minimum Temperature: {TMIN}</br>"
-        f"Average Temperature: {round(TAVG, 2)}"
-    )
+    return (
+        f'Based on the date ({start}) entered:<br/>'
+        f' <br/>'
+        f'Maximum Temperature: {TMAX} | '
+        f'Minimum Temperature: {TMIN} | '
+        f'Average Temperature: {round(TAVG, 1)}')
 
-@app.route("/api/v1.0/start/end")
-def start_end():
+
+@app.route("/api/v1.0/<start>/<end>")
+def start_end(start, end):
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
@@ -149,24 +151,22 @@ def start_end():
     # Query the dates and tobs for given start and end dates
     results = session.query(Measurement.date >= start).filter(Measurement.date <= end).filter(Measurement.tobs).all()
 
-    # Create a list to store dates and temperature info
-    temp_by_start_end_dates = []
-    for result in results:
-        temp_by_start_end_dates.append(result[2])
-
     # Calculate the TMIN, TAVG, and TMAX for dates between the start and end dates inclusive
-    TMIN = min(temp_by_start_end_dates)
-    TAVG = (sum(temp_by_start_date) / len(temp_by_start_end_dates))
-    TMAX = max(temp_by_start_end_dates)
+    start = dt.datetime.strptime(start, '%Y-%m-%d').strftime("%Y-%m-%d")
+    end = dt.datetime.strptime(end, '%Y-%m-%d').strftime("%Y-%m-%d")
+    TMIN = session.query(func.min(Measurement.tobs)).filter(Measurement.date >= start).filter(Measurement.date <= end).all()[0][0]
+    TAVG = session.query(func.avg(Measurement.tobs)).filter(Measurement.date >= start).filter(Measurement.date <= end).all()[0][0]
+    TMAX = session.query(func.max(Measurement.tobs)).filter(Measurement.date >= start).filter(Measurement.date <= end).all()[0][0]
 
     # Close each session to avoid running errors
     session.close()
 
-    return jsonify(
-        f"Maximum Temperature: {TMAX}</br>"
-        f"Minimum Temperature: {TMIN}</br>"
-        f"Average Temperature: {round(TAVG, 2)}"
-    )
+    return (
+        f'Based on the date ranges entered, from ({start}) to ({end}):<br/>'
+        f' <br/>'
+        f'Maximum Temperature: {TMAX} | '
+        f'Minimum Temperature: {TMIN} | '
+        f'Average Temperature: {round(TAVG, 1)}')
 
 # Need to run app.py
 if __name__ == '__main__':
